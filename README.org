@@ -1,0 +1,66 @@
+* new and novel
+** Markov Convergence for leader election
+** Everything Local Cache
+** No Paxos or Raft (simple CAS)
+
+* Client
+** Initial Session Request
+Client will send leader request to any node in the Q. That ode
+will respond with the leaders IP. If no leader has been selected
+the client will wait x amount of time and retry. There will be a
+bounded exponential back off retry for establishing a session prior
+to failure.
+** Write Request
+
+** Local Cache
+
+** Read Request
+
+
+* No Leader Mode
+If a Q node does not have a leader it will respond to all client session
+requests with a failure. If a session has been established on that Q node
+(former leader), once the "No Leader Event" is triggered, all established
+sessions must be immediately closed. Only the client must accept read (potentially?)
+or write requests.
+
+* Leader Election
+Leader election occurs via a simple markov convergence. The number of participating
+nodes is assumed to be 5. The next node in the markov sequence will not be generate
+unless each Q node can account for all 5 nodes. There will be a timeout associated
+with each event finally resulting in the program exiting if a leader cannot be
+elected.
+
+* Leader Mode
+The leader will be responsible for establishing persistent sessions with the clients,
+handling all read a write requests, performing the CAS for all Q nodes, managing
+the client caches and distributing event notifications.
+
+* Follower Mode
+Follower nodes in the Q set are there to provide quorum in the event of lost data or
+a newly elected leader. If 3 of the 5 Q nodes agree on a datum, that datum will be
+assumed correct.
+
+* 10 Events
+
+** Child Node Added
+
+** Child Node Removed
+
+** Child Node Modified
+
+** File Modified
+
+** Lock Acquired
+
+** Lock Conflict
+
+** Master Failed
+
+-- ( Where Chubby Events End ) --
+
+** Invalidate Cache
+
+** Mark Node Dirty
+
+** Replication Event
