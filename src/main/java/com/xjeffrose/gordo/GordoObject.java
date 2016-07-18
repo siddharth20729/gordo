@@ -1,4 +1,4 @@
-package com.xjeffrose.gordo.server;
+package com.xjeffrose.gordo;
 
 import io.netty.handler.codec.DecoderResultProvider;
 

@@ -1,4 +1,4 @@
-package com.xjeffrose.gordo.server;
+package com.xjeffrose.gordo;
 
 import com.google.common.hash.Hashing;
 import com.google.common.primitives.Ints;
@@ -68,7 +68,7 @@ public class GordoObjectEncoder extends MessageToMessageEncoder<Object> {
     if (msg instanceof GordoMessage) {
       gMessage = (GordoMessage) msg;
     } else {
-      log.error("Object not an instance of ChicagoMessage: " + msg);
+      log.error("Object not an instance of GordoMessage: " + msg);
     }
 
     ByteBuf _msg = ctx.alloc().directBuffer().writeBytes(encode(gMessage.getId(), gMessage.getOp(), gMessage.getColFam(), gMessage.getKey(), gMessage.getVal()));

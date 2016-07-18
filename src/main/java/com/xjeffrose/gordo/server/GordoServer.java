@@ -53,7 +53,7 @@ public class GordoServer implements Closeable {
 
   private void configureAdminServer() {
     XioServerDef adminServer = new XioServerDefBuilder()
-        .name("Chicago Admin Server")
+        .name("Gordo Admin Server")
         .listen(new InetSocketAddress(config.getAdminBindIP(), config.getAdminPort()))
         .withSecurityFactory(new XioSecurityFactory() {
           @Override
@@ -97,7 +97,7 @@ public class GordoServer implements Closeable {
 
   private void configureStatsServer() {
     XioServerDef statsServer = new XioServerDefBuilder()
-        .name("Chicago Stats Server")
+        .name("Gordo Stats Server")
         .listen(new InetSocketAddress(config.getStatsBindIP(), config.getStatsPort()))
         .withSecurityFactory(new XioSecurityFactory() {
           @Override
@@ -141,7 +141,7 @@ public class GordoServer implements Closeable {
 
   private void configureGServer() {
     XioServerDef dbServer = new XioServerDefBuilder()
-        .name("Chicago DB Server")
+        .name("Gordo Server")
         .listen(new InetSocketAddress(config.getDBBindIP(), config.getDBPort()))
 //        .withSecurityFactory(new XioNoOpSecurityFactory())
         .withSecurityFactory(new XioSecurityFactory() {
@@ -205,12 +205,12 @@ public class GordoServer implements Closeable {
       x.start();
       config.setChannelStats(x.getXioMetrics());
       // For debug, leave commented out (or not, your choice if you like it)
-      String msg = "--------------- Chicago Server Started!!! ----------------------";
+      String msg = "--------------- Gordo Server Started!!! ----------------------";
       //System.out.println(msg);
       log.info(msg);
     } catch (Exception e) {
       e.printStackTrace();
-      log.error("There was an error starting Chicago: ", e);
+      log.error("There was an error starting Gordo: ", e);
       x.stop();
       throw new RuntimeException(e);
     }
@@ -234,7 +234,7 @@ public class GordoServer implements Closeable {
 
   public InetSocketAddress getDBBoundInetAddress() {
     for (Map.Entry<XioServerDef, Integer> entry : x.getBoundPorts().entrySet()) {
-      if (entry.getKey().getName().equals("Chicago DB Server")) {
+      if (entry.getKey().getName().equals("Gordo Server")) {
         return new InetSocketAddress(
             entry.getKey().getHostAddress().getAddress(),
             entry.getValue()

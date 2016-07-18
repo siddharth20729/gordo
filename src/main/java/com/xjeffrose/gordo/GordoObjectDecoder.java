@@ -1,8 +1,10 @@
-package com.xjeffrose.gordo.server;
+package com.xjeffrose.gordo;
 
 import com.google.common.hash.HashCode;
 import com.google.common.hash.Hashing;
 import com.google.common.primitives.Ints;
+import com.xjeffrose.gordo.server.DefaultGordoMessage;
+import com.xjeffrose.gordo.server.GordoDecodeException;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;

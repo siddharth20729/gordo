@@ -10,7 +10,7 @@ public class Gordo {
   private static final Logger log = LoggerFactory.getLogger(Gordo.class.getName());
 
   public static void main(String[] args) {
-    log.info("Starting Chicago, have a nice day");
+    log.info("Starting Gordo, have a nice day");
 
     Config _conf;
 
@@ -30,7 +30,7 @@ public class Gordo {
       GordoServer server = new GordoServer(config);
       server.start();
     } catch (Exception e) {
-      log.error("Error Starting Chicago", e);
+      log.error("Error Starting Gordo", e);
       throw new RuntimeException(e);
     }
   }
