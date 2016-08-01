@@ -1,4 +1,4 @@
-package com.xjeffrose.gordo.server;
+package com.xjeffrose.gordo;
 
 import com.typesafe.config.Config;
 import com.xjeffrose.xio.core.XioMetrics;
@@ -13,8 +13,6 @@ import org.slf4j.LoggerFactory;
 public class GordoConfig {
   private static final Logger log = LoggerFactory.getLogger(GordoConfig.class.getName());
 
-//  private final int gordoPort;
-//  private String gordoBindIP;
   private String X509_CERT;
   private String PRIVATE_KEY;
   private Config conf;
@@ -27,13 +25,10 @@ public class GordoConfig {
   private String statsBindIP;
   private int gordoPort;
   private String gordoBindIP;
-  private String cert;
-  private String key;
-  private String dbPath;
   private int quorum;
-  private boolean graceFullStart;
-  private long compactionSize;
-  private boolean databaseMode;
+  private String masterBindIP;
+  private int masterPort;
+  private String cellMembers;
 
   public GordoConfig(Config conf) {
 
@@ -47,20 +42,20 @@ public class GordoConfig {
       e.printStackTrace();
     }
 
-//    this.dbPath = conf.getString("db_path");
     this.workers = conf.getInt("workers");
-    this.bossCount =  conf.getInt("boss_count");
+    this.bossCount = conf.getInt("boss_count");
     this.adminBindIP = conf.getString("admin_bind_ip");
     this.adminPort = conf.getInt("admin_port");
     this.statsBindIP = conf.getString("stats_bind_ip");
     this.statsPort = conf.getInt("stats_port");
+    this.masterBindIP = conf.getString("master_bind_ip");
+    this.masterPort = conf.getInt("master_port");
     this.gordoBindIP = conf.getString("gordo_bind_ip");
     this.gordoPort = conf.getInt("gordo_port");
     this.quorum = conf.getInt("quorum");
-
+    this.cellMembers = conf.getString("cell_members");
 
   }
-
 
   public int getWorkers() {
     return workers;
@@ -90,16 +85,12 @@ public class GordoConfig {
     return statsBindIP;
   }
 
-  public int getDBPort() {
+  public int getGordoPort() {
     return gordoPort;
   }
 
-  public String getDBBindIP() {
+  public String getGordoBindIP() {
     return gordoBindIP;
-  }
-
-  public String getDBBindEndpoint() {
-    return gordoBindIP + ":" + gordoPort;
   }
 
   public String getCert() {
@@ -110,13 +101,19 @@ public class GordoConfig {
     return PRIVATE_KEY;
   }
 
-  public String getDBPath() {
-    return dbPath;
+  public String getMasterBindIP() {
+    return masterBindIP;
   }
 
-  public int getQuorum() {
-    return quorum;
+  public int getMasterPort() {
+    return masterPort;
   }
 
+  public String getCellMembers() {
+    return cellMembers;
+  }
 
+  public void setCellMembers(String cellMembers) {
+    this.cellMembers = cellMembers;
+  }
 }

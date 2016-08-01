@@ -1,5 +1,10 @@
 package com.xjeffrose.gordo.server;
 
+import com.xjeffrose.gordo.GordoAdminProcessor;
+import com.xjeffrose.gordo.GordoCodec;
+import com.xjeffrose.gordo.GordoConfig;
+import com.xjeffrose.gordo.GordoHandler;
+import com.xjeffrose.gordo.GordoMaster;
 import com.xjeffrose.xio.SSL.XioSecurityHandlerImpl;
 import com.xjeffrose.xio.core.XioAggregatorFactory;
 import com.xjeffrose.xio.core.XioCodecFactory;
@@ -23,7 +28,6 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import org.slf4j.Logger;
@@ -35,21 +39,17 @@ public class GordoServer implements Closeable {
   //TODO(JR): Make this concurrent to applow for parallel streams
   private final Set<XioServerDef> serverDefSet = new HashSet<>();
   private final GordoConfig config;
+  private final String cellMembers;
+  private final GordoMaster master;
+
   private XioBootstrap x;
-//  private final DBLog dbLog;
+
 
   public GordoServer(GordoConfig config) {
     this.config = config;
-
-
+    this.cellMembers = config.getCellMembers();
+    this.master = new GordoMaster();
   }
-
-  public void start() {
-    configureAdminServer();
-    configureStatsServer();
-    configureGServer();
-  }
-
 
   private void configureAdminServer() {
     XioServerDef adminServer = new XioServerDefBuilder()
@@ -139,10 +139,54 @@ public class GordoServer implements Closeable {
     serverDefSet.add(statsServer);
   }
 
-  private void configureGServer() {
-    XioServerDef dbServer = new XioServerDefBuilder()
+  private void configureMasterServer() {
+    XioServerDef masterServer = new XioServerDefBuilder()
+        .name("Gordo Master Server")
+        .listen(new InetSocketAddress(config.getMasterBindIP(), config.getMasterPort()))
+        .withSecurityFactory(new XioSecurityFactory() {
+          @Override
+          public XioSecurityHandlers getSecurityHandlers(XioServerDef xioServerDef, XioServerConfig xioServerConfig) {
+            return new XioSecurityHandlerImpl(config.getCert(), config.getKey());
+          }
+
+          @Override
+          public XioSecurityHandlers getSecurityHandlers() {
+            return new XioSecurityHandlerImpl(config.getCert(), config.getKey());
+          }
+        })
+        .withProcessorFactory(new XioProcessorFactory() {
+          @Override
+          public XioProcessor getProcessor() {
+            return new GordoProcessor();
+          }
+        })
+        .withCodecFactory(new XioCodecFactory() {
+          @Override
+          public ChannelHandler getCodec() {
+            return new XioNoOpHandler();
+          }
+        })
+        .withAggregator(new XioAggregatorFactory() {
+          @Override
+          public ChannelHandler getAggregator() {
+            return new XioNoOpHandler();
+          }
+        })
+        .withRoutingFilter(new XioRoutingFilterFactory() {
+          @Override
+          public ChannelInboundHandler getRoutingFilter() {
+            return new GordoMasterHandler(config, cellMembers, master);
+          }
+        })
+        .build();
+
+    serverDefSet.add(masterServer);
+  }
+
+  private void configureGordoServer() {
+    XioServerDef gordoServer = new XioServerDefBuilder()
         .name("Gordo Server")
-        .listen(new InetSocketAddress(config.getDBBindIP(), config.getDBPort()))
+        .listen(new InetSocketAddress(config.getGordoBindIP(), config.getGordoPort()))
 //        .withSecurityFactory(new XioNoOpSecurityFactory())
         .withSecurityFactory(new XioSecurityFactory() {
           @Override
@@ -176,19 +220,20 @@ public class GordoServer implements Closeable {
         .withRoutingFilter(new XioRoutingFilterFactory() {
           @Override
           public ChannelInboundHandler getRoutingFilter() {
-            return new GordoHandler();
+            return new GordoHandler(config, cellMembers, master);
           }
         })
         .build();
 
-    serverDefSet.add(dbServer);
+    serverDefSet.add(gordoServer);
   }
 
   public void run() {
 
     configureAdminServer();
     configureStatsServer();
-    configureGServer();
+    configureMasterServer();
+    configureGordoServer();
 
     XioServerConfig serverConfig = XioServerConfig.newBuilder()
         .setBossThreadCount(config.getBossCount())
@@ -222,6 +267,10 @@ public class GordoServer implements Closeable {
     serverDefSet.clear();
   }
 
+  public void start() {
+    run();
+  }
+
   public void stop() {
     try {
       close();
@@ -230,17 +279,5 @@ public class GordoServer implements Closeable {
       log.error("Error while attempting to close", e);
       System.exit(-1);
     }
-  }
-
-  public InetSocketAddress getDBBoundInetAddress() {
-    for (Map.Entry<XioServerDef, Integer> entry : x.getBoundPorts().entrySet()) {
-      if (entry.getKey().getName().equals("Gordo Server")) {
-        return new InetSocketAddress(
-            entry.getKey().getHostAddress().getAddress(),
-            entry.getValue()
-        );
-      }
-    }
-    return null;
   }
 }

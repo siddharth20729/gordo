@@ -1,4 +1,4 @@
-package com.xjeffrose.gordo.server;
+package com.xjeffrose.gordo;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.xjeffrose.xio.processor.XioProcessor;

@@ -1,4 +1,4 @@
-package com.xjeffrose.gordo.server;
+package com.xjeffrose.gordo;
 
 import com.xjeffrose.gordo.GordoMessage;
 import com.xjeffrose.gordo.Op;
@@ -10,7 +10,6 @@ public class DefaultGordoMessage implements GordoMessage {
 
   public DefaultGordoMessage(UUID uuid, Object fromInt, byte[] colFam, byte[] key, byte[] val) {
   }
-
 
   @Override
   public DecoderResult decoderResult() {

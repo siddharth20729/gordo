@@ -1,12 +1,18 @@
 package com.xjeffrose.gordo;
 
 public enum Op {
-  READ(0),
-  WRITE(1),
-  DELETE(2),
-  RESPONSE(3),
-  TS_WRITE(4),
-  STREAM(5);
+
+  CHILD_NODE_ADDED(0),
+  CHILD_NODE_MODIFIED(1),
+  CHILD_NODE_REMOVED(2),
+  FILE_MODIFIED(3),
+  LOCK_ACQUIRED(4),
+  LOCK_CONFLICT(5),
+  MASTER_FAILED(6),
+  INVALIDATE_CACHE(7),
+  MARK_NODE_DIRTY(8),
+  REPLICATION_EVENT(9);
+
 
   private int i;
 
@@ -22,18 +28,27 @@ public enum Op {
   public static Op fromInt(int x) {
     switch(x) {
       case 0:
-        return READ;
+        return CHILD_NODE_ADDED;
       case 1:
-        return WRITE;
+        return CHILD_NODE_MODIFIED;
       case 2:
-        return DELETE;
+        return CHILD_NODE_REMOVED;
       case 3:
-        return RESPONSE;
+        return FILE_MODIFIED;
       case 4:
-        return TS_WRITE;
+        return LOCK_ACQUIRED;
       case 5:
-        return STREAM;
+        return LOCK_CONFLICT;
+      case 6:
+        return MASTER_FAILED;
+      case 7:
+        return INVALIDATE_CACHE;
+      case 8:
+        return MARK_NODE_DIRTY;
+      case 9:
+        return REPLICATION_EVENT;
     }
+
     return null;
   }
 }

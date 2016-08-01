@@ -1,7 +1,5 @@
-package com.xjeffrose.gordo.server;
+package com.xjeffrose.gordo;
 
-import com.xjeffrose.gordo.GordoObjectDecoder;
-import com.xjeffrose.gordo.GordoObjectEncoder;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.CombinedChannelDuplexHandler;
 import io.netty.handler.codec.http.HttpServerUpgradeHandler;

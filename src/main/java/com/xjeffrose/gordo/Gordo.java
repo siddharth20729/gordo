@@ -1,7 +1,8 @@
-package com.xjeffrose.gordo.server;
+package com.xjeffrose.gordo;
 
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import com.xjeffrose.gordo.server.GordoServer;
 import java.io.File;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
