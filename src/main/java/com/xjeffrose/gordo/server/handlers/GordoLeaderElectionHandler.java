@@ -32,14 +32,20 @@ public class GordoLeaderElectionHandler extends ChannelDuplexHandler {
       int op = Ints.fromByteArray(_op);
 
       switch (op) {
+        // Request to Start Leader Election
         case 0:
           if (campaignManager.okToStartCampaign()) {
+            if (!campaignManager.isThereAnOngoingElection()) {
+              campaignManager.startNewElectionCampaign(ctx);
+            }
             bb.writeBytes(Ints.toByteArray(0));
+            bb.writeBytes(Ints.toByteArray(campaignManager.getCurrentElectionCycle()));
             bb.writeBytes(Ints.toByteArray(1));
             ctx.writeAndFlush(bb);
           } else {
             bb.writeBytes(Ints.toByteArray(0));
-            bb.writeBytes(Ints.toByteArray(0));
+            bb.writeBytes(Ints.toByteArray(campaignManager.getCurrentElectionCycle()));
+            bb.writeBytes(Ints.toByteArray(-1));
             ctx.writeAndFlush(bb);
           }
 
@@ -47,17 +53,26 @@ public class GordoLeaderElectionHandler extends ChannelDuplexHandler {
 
         case 1:
           // Cast ballot
+
+          // Verify election Cycle
+          byte[] _electionCycle = new byte[4];
+          byteBuf.readBytes(_electionCycle);
+          int electionCycle = Ints.fromByteArray(_electionCycle);
+
+          if (electionCycle != campaignManager.getCurrentElectionCycle()) {
+            // TODO(JR): Wait for next cycle?
+          }
+
+          // Get the vote
           byte[] _ballot = new byte[4];
           byteBuf.readBytes(_ballot);
           int ballot = Ints.fromByteArray(_ballot);
           campaignManager.castVote(ctx.channel(), ballot);
 
-          log.info("---------++++++++++++++++++++------------" + ctx.channel().remoteAddress()
-              + " Voted for " + ballot);
-
           if (campaignManager.votesCast() == quorum) {
             if (campaignManager.isConsensusVote(ballot)) {
               bb.writeBytes(Ints.toByteArray(2));
+              bb.writeBytes(Ints.toByteArray(campaignManager.getCurrentElectionCycle()));
               bb.writeBytes(Ints.toByteArray(ballot));
 
               campaignManager.getDelegateList().stream().forEach(xs -> {
@@ -67,7 +82,8 @@ public class GordoLeaderElectionHandler extends ChannelDuplexHandler {
               campaignManager.clear();
             } else {
               bb.writeBytes(Ints.toByteArray(0));
-              bb.writeBytes(Ints.toByteArray(1));
+              bb.writeBytes(Ints.toByteArray(campaignManager.getCurrentElectionCycle()));
+              bb.writeBytes(Ints.toByteArray(-1));
 
               campaignManager.getDelegateList().stream().forEach(xs -> {
                 xs.writeAndFlush(bb.duplicate());
@@ -81,12 +97,11 @@ public class GordoLeaderElectionHandler extends ChannelDuplexHandler {
 
         case 2:
           // Confirm Leader
-//        confirmLeader(ctx, masterManager.getMaster());
-        break;
+          break;
 
         case 3:
           // Who is Leader
-        break;
+          break;
 
         default:
           break;

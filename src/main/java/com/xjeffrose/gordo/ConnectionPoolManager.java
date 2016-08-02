@@ -1,15 +1,12 @@
 package com.xjeffrose.gordo;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.xjeffrose.gordo.server.handlers.GordoLeaderElectionHandler;
-import com.xjeffrose.xio.SSL.XioSecurityHandlerImpl;
 import com.xjeffrose.xio.client.retry.BoundedExponentialBackoffRetry;
 import com.xjeffrose.xio.client.retry.RetryLoop;
 import com.xjeffrose.xio.client.retry.TracerDriver;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -58,7 +55,7 @@ public class ConnectionPoolManager {
     log.info("ConnectionPoolManager stopping");
     running.set(false);
     ChannelGroup channelGroup = new DefaultChannelGroup(workerLoop.next());
-    for(ChannelFuture cf : connectionMap.values()) {
+    for (ChannelFuture cf : connectionMap.values()) {
       channelGroup.add(cf.channel());
     }
     log.info("Closing channels");
@@ -79,28 +76,16 @@ public class ConnectionPoolManager {
   }
 
   public ChannelFuture getNode(String node) {
-    log.debug("Trying to get node:"+node);
+    log.debug("Trying to get node:" + node);
     return _getNode(node, System.currentTimeMillis());
   }
 
-  private ChannelFuture _getNode(String node, long startTime)  {
-//      if (TIMEOUT_ENABLED && (System.currentTimeMillis() - startTime) > TIMEOUT) {
-//        Thread.currentThread().interrupt();
-//        System.out.println("Cannot get connection for node "+ node +" connectionMap ="+ connectionMap.keySet().toString());
-//        throw new ChicagoClientTimeoutException();
-//      }
-//      try {
-//        Thread.sleep(1);
-//      } catch (InterruptedException e) {
-//        e.printStackTrace();
-//      }
-//    }
-
+  private ChannelFuture _getNode(String node, long startTime) {
     ChannelFuture cf = connectionMap.get(node);
     if (cf.channel().isWritable()) {
       return cf;
-    }else{
-      return _getNode(node,startTime);
+    } else {
+      return _getNode(node, startTime);
     }
   }
 
