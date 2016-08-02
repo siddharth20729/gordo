@@ -33,15 +33,9 @@
     <dependencies>
 
         <dependency>
-            <groupId>com.xjeffrose</groupId>
-            <artifactId>xio</artifactId>
-            <version>0.11.0-SNAPSHOT</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>log4j</groupId>
-                    <artifactId>log4j</artifactId>
-                </exclusion>
-            </exclusions>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-all</artifactId>
+            <version>4.1.4.Final</version>
         </dependency>
 
         <dependency>
