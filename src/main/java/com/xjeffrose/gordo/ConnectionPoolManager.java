@@ -40,9 +40,9 @@ public class ConnectionPoolManager {
   );
 
   private final AtomicBoolean running = new AtomicBoolean(false);
-  private final List<String> delegateList;
+  private final List<InetSocketAddress> delegateList;
 
-  public ConnectionPoolManager(List<String> delegateList) {
+  public ConnectionPoolManager(List<InetSocketAddress> delegateList) {
     this.delegateList = delegateList;
   }
 
@@ -71,7 +71,7 @@ public class ConnectionPoolManager {
 
   private void refreshPool() {
     delegateList.stream().forEach(xs -> {
-      connect(address(xs));
+      connect(xs);
     });
   }
 
@@ -81,10 +81,19 @@ public class ConnectionPoolManager {
   }
 
   private ChannelFuture _getNode(String node, long startTime) {
-    ChannelFuture cf = connectionMap.get(node);
-    if (cf.channel().isWritable()) {
-      return cf;
+    if (connectionMap.containsKey(node)) {
+      ChannelFuture cf = connectionMap.get(node);
+      if (cf.channel().isWritable()) {
+        return cf;
+      } else {
+        return _getNode(node, startTime);
+      }
     } else {
+      try {
+        Thread.sleep(500);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
       return _getNode(node, startTime);
     }
   }
