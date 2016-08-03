@@ -22,7 +22,7 @@ public class PetitionBuilder {
   public static ByteBuf VoteForMe(int sessionID) {
     ByteBuf bb = Unpooled.buffer();
 
-    bb.writeBytes(Ints.toByteArray(0));
+    bb.writeBytes(Ints.toByteArray(1));
     bb.writeBytes(Ints.toByteArray(sessionID));
     bb.writeBytes(Ints.toByteArray(dice.nextInt(100)));
 

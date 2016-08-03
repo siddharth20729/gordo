@@ -6,6 +6,7 @@ import java.net.InetSocketAddress;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class CampaignManagerTest {
   @Test
@@ -34,10 +35,15 @@ public class CampaignManagerTest {
     cm2.electLeader();
     cm3.electLeader();
 
+    Thread.sleep(1000);
+
+    assertTrue(cm1.getLeader() != -1);
+    assertTrue(cm2.getLeader() != -1);
+    assertTrue(cm3.getLeader() != -1);
+
     assertEquals(cm1.getLeader(), cm2.getLeader());
     assertEquals(cm2.getLeader(), cm3.getLeader());
-    assertEquals(cm3.getLeader(),17);
-    
+
     server1.stop();
     server2.stop();
     server3.stop();

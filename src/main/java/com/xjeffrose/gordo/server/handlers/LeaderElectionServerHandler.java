@@ -14,7 +14,7 @@ public class LeaderElectionServerHandler extends ChannelDuplexHandler {
 
   private final int quorum;
   private final CampaignManager campaignManager;
-  private final ByteBuf bb = UnpooledByteBufAllocator.DEFAULT.buffer();
+//  private final ByteBuf bb = UnpooledByteBufAllocator.DEFAULT.buffer();
 
 
   public LeaderElectionServerHandler(int quorum, CampaignManager campaignManager) {
@@ -25,7 +25,8 @@ public class LeaderElectionServerHandler extends ChannelDuplexHandler {
   @Override
   public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
     if (msg instanceof ByteBuf) {
-      ByteBuf byteBuf = (ByteBuf) msg;
+      final ByteBuf bb = UnpooledByteBufAllocator.DEFAULT.buffer();
+      final ByteBuf byteBuf = (ByteBuf) msg;
 
       byte[] _op = new byte[4];
       byteBuf.readBytes(_op);
@@ -75,11 +76,13 @@ public class LeaderElectionServerHandler extends ChannelDuplexHandler {
               bb.writeBytes(Ints.toByteArray(campaignManager.getCurrentElectionCycle()));
               bb.writeBytes(Ints.toByteArray(campaignManager.getConsensusVote()));
 
-              campaignManager.getDelegateList().stream().forEach(xs -> {
+            bb.retain(campaignManager.getDelegateList().size());
+            campaignManager.getDelegateList().stream().forEach(xs -> {
                 xs.writeAndFlush(bb.duplicate());
               });
+
               System.out.println(ctx.channel().toString() + "Elected : " + ballot);
-              campaignManager.swearIn(ballot);
+              campaignManager.swearIn(campaignManager.getConsensusVote());
               campaignManager.clear();
 //            } else {
 //              bb.writeBytes(Ints.toByteArray(0));

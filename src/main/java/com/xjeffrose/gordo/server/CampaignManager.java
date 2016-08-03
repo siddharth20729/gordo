@@ -130,7 +130,9 @@ public class CampaignManager {
   }
 
   public int getConsensusVote() {
-    return ballotBox.values().stream().max(Integer::compare).orElse(null);
+    int vote =  ballotBox.values().stream().max(Integer::compare).orElse(null);
+    log.info(Integer.toString(vote));
+    return vote;
   }
 
   public int getLeader() {
