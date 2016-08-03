@@ -41,7 +41,7 @@ public class GordoServerBootstrap {
   private Channel serverChannel;
 
 
-  public GordoServerBootstrap(InetSocketAddress addr, ChannelHandler handler, int maxConnections) {
+  public GordoServerBootstrap(InetSocketAddress addr, ChannelHandlerFactory handlerFactory, int maxConnections) {
     this.requestedPort = addr.getPort();
     this.hostAddr = addr;
 //    this.bossExecutor = bossExecutor;
@@ -76,7 +76,7 @@ public class GordoServerBootstrap {
 //        cp.addLast("authHandler", securityHandlers.getAuthenticationHandler());
 //        cp.addLast("dispatcher", new XioDispatcher(def, xioServerConfig));
 //        cp.addLast("exceptionLogger", new XioExceptionLogger());
-        cp.addLast("GordoHandler", handler);
+        cp.addLast("GordoHandler", handlerFactory.get());
       }
     };
 

@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import com.xjeffrose.gordo.server.GordoServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import java.net.InetSocketAddress;
@@ -19,25 +20,13 @@ public class ConnectionPoolManagerTest {
     final InetSocketAddress addr1 = UnitHelp.localSocketAddress();
     final InetSocketAddress addr2 = UnitHelp.localSocketAddress();
 
-    GordoServerBootstrap server1 = new GordoServerBootstrap(addr1, new SimpleChannelInboundHandler<ByteBuf>() {
-      @Override
-      protected void channelRead0(ChannelHandlerContext channelHandlerContext, ByteBuf byteBuf) throws Exception {
-
-      }
-    }, 5);
-
-    GordoServerBootstrap server2 = new GordoServerBootstrap(addr2, new SimpleChannelInboundHandler<ByteBuf>() {
-      @Override
-      protected void channelRead0(ChannelHandlerContext channelHandlerContext, ByteBuf byteBuf) throws Exception {
-
-      }
-    }, 5);
+    GordoServerBootstrap server1 = new GordoServerBootstrap(addr1, () -> new TestHandler(), 5);
+    GordoServerBootstrap server2 = new GordoServerBootstrap(addr2, () -> new TestHandler(), 5);
 
     server1.start();
     server2.start();
 
-    ConnectionPoolManager cpx = new ConnectionPoolManager(ImmutableList.of(addr1, addr2));
-
+    ConnectionPoolManager cpx = new ConnectionPoolManager(ImmutableList.of(addr1, addr2), new TestHandler());
     cpx.start();
 
     ChannelFuture cf1 = cpx.getNode(addr1.getAddress().getHostAddress() + ":" + addr1.getPort());
@@ -50,9 +39,14 @@ public class ConnectionPoolManagerTest {
     server2.stop();
   }
 
-  @Test
-  public void addNode() throws Exception {
+
+}
+
+@ChannelHandler.Sharable
+class TestHandler extends SimpleChannelInboundHandler<ByteBuf> {
+
+  @Override
+  protected void channelRead0(ChannelHandlerContext channelHandlerContext, ByteBuf byteBuf) throws Exception {
 
   }
-
 }

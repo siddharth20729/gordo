@@ -1,31 +1,21 @@
 package com.xjeffrose.gordo;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.xjeffrose.xio.client.retry.BoundedExponentialBackoffRetry;
-import com.xjeffrose.xio.client.retry.RetryLoop;
-import com.xjeffrose.xio.client.retry.TracerDriver;
 import io.netty.bootstrap.Bootstrap;
-import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelOption;
-import io.netty.channel.ChannelPipeline;
-import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.internal.PlatformDependent;
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,15 +25,17 @@ public class ConnectionPoolManager {
   private final Map<String, ChannelFuture> connectionMap = PlatformDependent.newConcurrentHashMap();
   private final NioEventLoopGroup workerLoop = new NioEventLoopGroup(5,
       new ThreadFactoryBuilder()
-          .setNameFormat("chicago-nioEventLoopGroup-%d")
+          .setNameFormat("gordo-nioEventLoopGroup-%d")
           .build()
   );
 
   private final AtomicBoolean running = new AtomicBoolean(false);
   private final List<InetSocketAddress> delegateList;
+  private final ChannelHandler handler;
 
-  public ConnectionPoolManager(List<InetSocketAddress> delegateList) {
+  public ConnectionPoolManager(List<InetSocketAddress> delegateList, ChannelHandler handler) {
     this.delegateList = delegateList;
+    this.handler = handler;
   }
 
   public void start() {
@@ -67,6 +59,10 @@ public class ConnectionPoolManager {
   private InetSocketAddress address(String node) {
     String chunks[] = node.split(":");
     return new InetSocketAddress(chunks[0], Integer.parseInt(chunks[1]));
+  }
+
+  public Map<String, ChannelFuture> getConncetionMap() {
+    return connectionMap;
   }
 
   private void refreshPool() {
@@ -114,38 +110,13 @@ public class ConnectionPoolManager {
         .option(ChannelOption.TCP_NODELAY, true);
     bootstrap.group(workerLoop)
         .channel(NioSocketChannel.class)
-        .handler(new ChannelInitializer<SocketChannel>() {
-          @Override
-          protected void initChannel(SocketChannel channel) throws Exception {
-            ChannelPipeline cp = channel.pipeline();
-            cp.addLast(new SimpleChannelInboundHandler<ByteBuf>() {
-              @Override
-              protected void channelRead0(ChannelHandlerContext channelHandlerContext, ByteBuf byteBuf) throws Exception {
+        .handler(handler);
 
-              }
-            });
-          }
-        });
 
-    BoundedExponentialBackoffRetry retry = new BoundedExponentialBackoffRetry(50, 500, 4);
-
-    TracerDriver tracerDriver = new TracerDriver() {
-
-      @Override
-      public void addTrace(String name, long time, TimeUnit unit) {
-      }
-
-      @Override
-      public void addCount(String name, int increment) {
-      }
-    };
-
-    RetryLoop retryLoop = new RetryLoop(retry, new AtomicReference<>(tracerDriver));
-
-    connect2(server, bootstrap, retryLoop);
+    connect2(server, bootstrap);
   }
 
-  private void connect2(InetSocketAddress server, Bootstrap bootstrap, RetryLoop retryLoop) {
+  private void connect2(InetSocketAddress server, Bootstrap bootstrap) {
     ChannelFutureListener listener = new ChannelFutureListener() {
       @Override
       public void operationComplete(ChannelFuture future) {
@@ -154,9 +125,9 @@ public class ConnectionPoolManager {
             return;
           }
           try {
-            retryLoop.takeException((Exception) future.cause());
+//            retryLoop.takeException((Exception) future.cause());
             log.error("==== Service connect failure (will retry)", future.cause());
-            connect2(server, bootstrap, retryLoop);
+            connect2(server, bootstrap);
           } catch (Exception e) {
             log.error("==== Service connect failure ", future.cause());
             // Close the connection if the connection attempt has failed.

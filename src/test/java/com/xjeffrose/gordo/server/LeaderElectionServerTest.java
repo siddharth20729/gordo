@@ -1,10 +1,15 @@
 package com.xjeffrose.gordo.server;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.primitives.Ints;
-import com.xjeffrose.gordo.server.handlers.GordoLeaderElectionHandler;
+import com.xjeffrose.gordo.ConnectionPoolManager;
+import com.xjeffrose.gordo.UnitHelp;
+import com.xjeffrose.gordo.server.handlers.LeaderElectionServerHandler;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.embedded.EmbeddedChannel;
 import org.junit.Test;
 
@@ -14,13 +19,18 @@ public class LeaderElectionServerTest {
 
   @Test
   public void castGoodBallot() throws Exception {
-    CampaignManager campaignManager = new CampaignManager();
+    CampaignManager campaignManager = new CampaignManager(new ConnectionPoolManager(ImmutableList.of(UnitHelp.localSocketAddress()), new SimpleChannelInboundHandler<ByteBuf>() {
+      @Override
+      protected void channelRead0(ChannelHandlerContext channelHandlerContext, ByteBuf byteBuf) throws Exception {
 
-    ChannelHandler testHandle1 = new GordoLeaderElectionHandler(5, campaignManager);
-    ChannelHandler testHandler2 = new GordoLeaderElectionHandler(5, campaignManager);
-    ChannelHandler testHandler3 = new GordoLeaderElectionHandler(5, campaignManager);
-    ChannelHandler testHandler4 = new GordoLeaderElectionHandler(5, campaignManager);
-    ChannelHandler testHandler5 = new GordoLeaderElectionHandler(5, campaignManager);
+      }
+    }), 5);
+
+    ChannelHandler testHandle1 = new LeaderElectionServerHandler(5, campaignManager);
+    ChannelHandler testHandler2 = new LeaderElectionServerHandler(5, campaignManager);
+    ChannelHandler testHandler3 = new LeaderElectionServerHandler(5, campaignManager);
+    ChannelHandler testHandler4 = new LeaderElectionServerHandler(5, campaignManager);
+    ChannelHandler testHandler5 = new LeaderElectionServerHandler(5, campaignManager);
 
 
     EmbeddedChannel ch1 = new EmbeddedChannel(testHandle1);
@@ -176,13 +186,18 @@ public class LeaderElectionServerTest {
 
   @Test
   public void castBadBallot() throws Exception {
-    CampaignManager campaignManager = new CampaignManager();
+    CampaignManager campaignManager = new CampaignManager(new ConnectionPoolManager(ImmutableList.of(UnitHelp.localSocketAddress()), new SimpleChannelInboundHandler<ByteBuf>() {
+      @Override
+      protected void channelRead0(ChannelHandlerContext channelHandlerContext, ByteBuf byteBuf) throws Exception {
 
-    ChannelHandler testHandle1 = new GordoLeaderElectionHandler(5, campaignManager);
-    ChannelHandler testHandler2 = new GordoLeaderElectionHandler(5, campaignManager);
-    ChannelHandler testHandler3 = new GordoLeaderElectionHandler(5, campaignManager);
-    ChannelHandler testHandler4 = new GordoLeaderElectionHandler(5, campaignManager);
-    ChannelHandler testHandler5 = new GordoLeaderElectionHandler(5, campaignManager);
+      }
+    }), 5);
+
+    ChannelHandler testHandle1 = new LeaderElectionServerHandler(5, campaignManager);
+    ChannelHandler testHandler2 = new LeaderElectionServerHandler(5, campaignManager);
+    ChannelHandler testHandler3 = new LeaderElectionServerHandler(5, campaignManager);
+    ChannelHandler testHandler4 = new LeaderElectionServerHandler(5, campaignManager);
+    ChannelHandler testHandler5 = new LeaderElectionServerHandler(5, campaignManager);
 
 
     EmbeddedChannel ch1 = new EmbeddedChannel(testHandle1);

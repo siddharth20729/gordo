@@ -9,15 +9,15 @@ import io.netty.channel.ChannelHandlerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class GordoLeaderElectionHandler extends ChannelDuplexHandler {
-  private static final Logger log = LoggerFactory.getLogger(GordoLeaderElectionHandler.class);
+public class LeaderElectionServerHandler extends ChannelDuplexHandler {
+  private static final Logger log = LoggerFactory.getLogger(LeaderElectionServerHandler.class);
 
   private final int quorum;
   private final CampaignManager campaignManager;
   private final ByteBuf bb = UnpooledByteBufAllocator.DEFAULT.buffer();
 
 
-  public GordoLeaderElectionHandler(int quorum, CampaignManager campaignManager) {
+  public LeaderElectionServerHandler(int quorum, CampaignManager campaignManager) {
     this.quorum = quorum;
     this.campaignManager = campaignManager;
   }
@@ -70,27 +70,28 @@ public class GordoLeaderElectionHandler extends ChannelDuplexHandler {
           campaignManager.castVote(ctx.channel(), ballot);
 
           if (campaignManager.votesCast() == quorum) {
-            if (campaignManager.isConsensusVote(ballot)) {
+//            if (campaignManager.isConsensusVote(ballot)) {
               bb.writeBytes(Ints.toByteArray(2));
               bb.writeBytes(Ints.toByteArray(campaignManager.getCurrentElectionCycle()));
-              bb.writeBytes(Ints.toByteArray(ballot));
+              bb.writeBytes(Ints.toByteArray(campaignManager.getConsensusVote()));
 
               campaignManager.getDelegateList().stream().forEach(xs -> {
                 xs.writeAndFlush(bb.duplicate());
               });
+              System.out.println(ctx.channel().toString() + "Elected : " + ballot);
               campaignManager.swearIn(ballot);
               campaignManager.clear();
-            } else {
-              bb.writeBytes(Ints.toByteArray(0));
-              bb.writeBytes(Ints.toByteArray(campaignManager.getCurrentElectionCycle()));
-              bb.writeBytes(Ints.toByteArray(-1));
-
-              campaignManager.getDelegateList().stream().forEach(xs -> {
-                xs.writeAndFlush(bb.duplicate());
-              });
-              campaignManager.swearIn(ballot);
-            }
-            campaignManager.clear();
+//            } else {
+//              bb.writeBytes(Ints.toByteArray(0));
+//              bb.writeBytes(Ints.toByteArray(campaignManager.getCurrentElectionCycle()));
+//              bb.writeBytes(Ints.toByteArray(-1));
+//
+//              campaignManager.getDelegateList().stream().forEach(xs -> {
+//                xs.writeAndFlush(bb.duplicate());
+//              });
+//              campaignManager.swearIn(ballot);
+//            }
+//            campaignManager.clear();
           }
 
           break;
