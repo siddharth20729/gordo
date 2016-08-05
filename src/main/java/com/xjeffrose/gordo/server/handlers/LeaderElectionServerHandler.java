@@ -1,21 +1,22 @@
 package com.xjeffrose.gordo.server.handlers;
 
 import com.google.common.primitives.Ints;
+import com.xjeffrose.gordo.DefaultGordoMessage;
+import com.xjeffrose.gordo.GordoMessage;
+import com.xjeffrose.gordo.Op;
 import com.xjeffrose.gordo.server.CampaignManager;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.UnpooledByteBufAllocator;
 import io.netty.channel.ChannelDuplexHandler;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@ChannelHandler.Sharable
 public class LeaderElectionServerHandler extends ChannelDuplexHandler {
   private static final Logger log = LoggerFactory.getLogger(LeaderElectionServerHandler.class);
 
   private final int quorum;
   private final CampaignManager campaignManager;
-//  private final ByteBuf bb = UnpooledByteBufAllocator.DEFAULT.buffer();
-
 
   public LeaderElectionServerHandler(int quorum, CampaignManager campaignManager) {
     this.quorum = quorum;
@@ -24,93 +25,79 @@ public class LeaderElectionServerHandler extends ChannelDuplexHandler {
 
   @Override
   public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-    if (msg instanceof ByteBuf) {
-      final ByteBuf bb = UnpooledByteBufAllocator.DEFAULT.buffer();
-      final ByteBuf byteBuf = (ByteBuf) msg;
-
-      byte[] _op = new byte[4];
-      byteBuf.readBytes(_op);
-      int op = Ints.fromByteArray(_op);
-
-      switch (op) {
-        // Request to Start Leader Election
-        case 0:
-          if (campaignManager.okToStartCampaign()) {
-            if (!campaignManager.isThereAnOngoingElection()) {
-              campaignManager.startNewElectionCampaign(ctx);
-            }
-            bb.writeBytes(Ints.toByteArray(0));
-            bb.writeBytes(Ints.toByteArray(campaignManager.getCurrentElectionCycle()));
-            bb.writeBytes(Ints.toByteArray(1));
-            ctx.writeAndFlush(bb);
+    if (msg instanceof GordoMessage) {
+      switch (((GordoMessage) msg).getOp()) {
+        case START_LEADER_ELECTION:
+          // Request to Start Leader Election
+          if (campaignManager.isThereAnOngoingElection()) {
+            ctx.writeAndFlush(
+                new DefaultGordoMessage(((GordoMessage) msg).getId(),
+                    Op.START_LEADER_ELECTION,
+                    ((GordoMessage) msg).getKey(),
+                    Ints.toByteArray(campaignManager.getCurrentElectionCycle()),
+                    true));
           } else {
-            bb.writeBytes(Ints.toByteArray(0));
-            bb.writeBytes(Ints.toByteArray(campaignManager.getCurrentElectionCycle()));
-            bb.writeBytes(Ints.toByteArray(-1));
-            ctx.writeAndFlush(bb);
+
+            if (campaignManager.okToStartCampaign()) {
+              campaignManager.startNewElectionCampaign();
+              ctx.writeAndFlush(
+                  new DefaultGordoMessage(((GordoMessage) msg).getId(),
+                      Op.START_LEADER_ELECTION,
+                      ((GordoMessage) msg).getKey(),
+                      Ints.toByteArray(campaignManager.getCurrentElectionCycle()),
+                      true));
+            } else {
+              ctx.writeAndFlush(
+                  new DefaultGordoMessage(((GordoMessage) msg).getId(),
+                      Op.START_LEADER_ELECTION,
+                      ((GordoMessage) msg).getKey(),
+                      Ints.toByteArray(campaignManager.getCurrentElectionCycle()),
+                      false));
+            }
           }
 
           break;
 
-        case 1:
+        case CAST_BALLOT:
           // Cast ballot
-
-          // Verify election Cycle
-          byte[] _electionCycle = new byte[4];
-          byteBuf.readBytes(_electionCycle);
-          int electionCycle = Ints.fromByteArray(_electionCycle);
-
-          if (electionCycle != campaignManager.getCurrentElectionCycle()) {
-            // TODO(JR): Wait for next cycle?
+          if (campaignManager.isThereAnOngoingElection()) {
+            campaignManager.castVote(ctx, ((GordoMessage) msg));
+            if (campaignManager.votesCast() > quorum) {
+              if (campaignManager.consensusReached()) {
+                ctx.writeAndFlush(
+                    new DefaultGordoMessage(((GordoMessage) msg).getId(),
+                        Op.CAST_BALLOT,
+                        ((GordoMessage) msg).getKey(),
+                        campaignManager.getLeader().getBytes(),
+                        true));
+              }  else {
+                String v = campaignManager.getConsensusVote();
+                campaignManager.swearIn(v);
+                ctx.writeAndFlush(
+                    new DefaultGordoMessage(((GordoMessage) msg).getId(),
+                        Op.CAST_BALLOT,
+                        ((GordoMessage) msg).getKey(),
+                        v.getBytes(),
+                        true));
+                campaignManager.clear();
+              }
+            }
+          } else {
+            ctx.writeAndFlush(
+                new DefaultGordoMessage(((GordoMessage) msg).getId(),
+                    Op.CAST_BALLOT,
+                    ((GordoMessage) msg).getKey(),
+                    null,
+                    false));
           }
-
-          // Get the vote
-          byte[] _ballot = new byte[4];
-          byteBuf.readBytes(_ballot);
-          int ballot = Ints.fromByteArray(_ballot);
-          campaignManager.castVote(ctx.channel(), ballot);
-
-          if (campaignManager.votesCast() == quorum) {
-//            if (campaignManager.isConsensusVote(ballot)) {
-              bb.writeBytes(Ints.toByteArray(2));
-              bb.writeBytes(Ints.toByteArray(campaignManager.getCurrentElectionCycle()));
-              bb.writeBytes(Ints.toByteArray(campaignManager.getConsensusVote()));
-
-            bb.retain(campaignManager.getDelegateList().size());
-            campaignManager.getDelegateList().stream().forEach(xs -> {
-                xs.writeAndFlush(bb.duplicate());
-              });
-
-              System.out.println(ctx.channel().toString() + "Elected : " + ballot);
-              campaignManager.swearIn(campaignManager.getConsensusVote());
-              campaignManager.clear();
-//            } else {
-//              bb.writeBytes(Ints.toByteArray(0));
-//              bb.writeBytes(Ints.toByteArray(campaignManager.getCurrentElectionCycle()));
-//              bb.writeBytes(Ints.toByteArray(-1));
-//
-//              campaignManager.getDelegateList().stream().forEach(xs -> {
-//                xs.writeAndFlush(bb.duplicate());
-//              });
-//              campaignManager.swearIn(ballot);
-//            }
-//            campaignManager.clear();
-          }
-
-          break;
-
-        case 2:
-          // Confirm Leader
-          break;
-
-        case 3:
-          // Who is Leader
           break;
 
         default:
           break;
 
       }
+    }  else {
+      log.error("Recieved a non standard request from: " + ctx);
     }
   }
 }

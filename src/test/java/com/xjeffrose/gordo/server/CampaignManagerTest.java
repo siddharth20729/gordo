@@ -31,15 +31,11 @@ public class CampaignManagerTest {
     cm2.start();
     cm3.start();
 
-    cm1.electLeader();
-    cm2.electLeader();
-    cm3.electLeader();
+    Thread.sleep(2500);
 
-    Thread.sleep(1000);
-
-    assertTrue(cm1.getLeader() != -1);
-    assertTrue(cm2.getLeader() != -1);
-    assertTrue(cm3.getLeader() != -1);
+    assertTrue(cm1.getLeader() != null);
+    assertTrue(cm2.getLeader() != null);
+    assertTrue(cm3.getLeader() != null);
 
     assertEquals(cm1.getLeader(), cm2.getLeader());
     assertEquals(cm2.getLeader(), cm3.getLeader());

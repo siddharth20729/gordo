@@ -26,7 +26,7 @@ public class ConnectionPoolManagerTest {
     server1.start();
     server2.start();
 
-    ConnectionPoolManager cpx = new ConnectionPoolManager(ImmutableList.of(addr1, addr2), new TestHandler());
+    ConnectionPoolManager cpx = new ConnectionPoolManager(ImmutableList.of(addr1, addr2), () -> new TestHandler());
     cpx.start();
 
     ChannelFuture cf1 = cpx.getNode(addr1.getAddress().getHostAddress() + ":" + addr1.getPort());

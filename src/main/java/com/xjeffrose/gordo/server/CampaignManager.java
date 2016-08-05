@@ -1,14 +1,17 @@
 package com.xjeffrose.gordo.server;
 
+import com.google.common.primitives.Ints;
 import com.xjeffrose.gordo.ConnectionPoolManager;
+import com.xjeffrose.gordo.GordoMessage;
 import com.xjeffrose.gordo.PetitionBuilder;
 import com.xjeffrose.gordo.server.handlers.DelegatePetitionHandler;
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.util.ReferenceCountUtil;
 import io.netty.util.internal.PlatformDependent;
 import java.net.InetSocketAddress;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -20,62 +23,62 @@ import org.slf4j.LoggerFactory;
 public class CampaignManager {
   private static final Logger log = LoggerFactory.getLogger(CampaignManager.class);
 
-  private final Map<Channel, Integer> ballotBox = PlatformDependent.newConcurrentHashMap();
-  private final Map<Channel, Integer> sessionIDs = PlatformDependent.newConcurrentHashMap();
-  private final Map<Channel, Integer> leadersQuorum = PlatformDependent.newConcurrentHashMap();
+  private final Map<ChannelHandlerContext, GordoMessage> ballotBox = PlatformDependent.newConcurrentHashMap();
+  private final Map<Channel, GordoMessage> sessionIDs = PlatformDependent.newConcurrentHashMap();
+  private final Map<Channel, GordoMessage> leadersQuorum = PlatformDependent.newConcurrentHashMap();
 
   private final long leaderLease = 100000; // Lease Time in Milliseconds
   private final AtomicInteger electionCycle = new AtomicInteger();
   private final AtomicBoolean electionCycleOngoing = new AtomicBoolean();
   private final ConnectionPoolManager cpx;
-  private final List<InetSocketAddress> delegateList;
   private final int q;
 
   private long electionTimeStamp;
-  private int leader = -1;
+  private String leader = null;
 
   public CampaignManager(List<InetSocketAddress> delegateList, int q) {
-    this.cpx = new ConnectionPoolManager(delegateList, new DelegatePetitionHandler(sessionIDs, leadersQuorum));
-    this.delegateList = delegateList;
+    this.cpx = new ConnectionPoolManager(delegateList, () -> new DelegatePetitionHandler(sessionIDs, leadersQuorum));
     this.q = q;
   }
 
   public CampaignManager(ConnectionPoolManager cpx, int q) {
     this.cpx = cpx;
-    this.delegateList = null;
     this.q = q;
   }
 
   public void start() {
     cpx.start();
+    if (leader == null) {
+      electLeader();
+    }
   }
 
-  public void castVote(Channel delegate, int ballot) {
-    ballotBox.put(delegate, ballot);
+  public void stop() {
+    cpx.stop();
+  }
+
+  public void castVote(ChannelHandlerContext ctx, GordoMessage gm) {
+    log.info(ctx + " Voted with a Gxid of " + Ints.fromByteArray(gm.getVal()));
+    ballotBox.put(ctx, gm);
   }
 
   public int votesCast() {
     return ballotBox.size();
   }
 
-  public boolean isConsensusVote(int ballot) {
-    return ballotBox.values().stream().allMatch(xs -> xs == ballot);
-  }
-
   public void clear() {
     ballotBox.clear();
   }
 
-  public void swearIn(int ballot) {
-    leader = ballot;
+  public void swearIn(String leader) {
+    this.leader = leader;
     electionTimeStamp = System.currentTimeMillis();
     electionCycleOngoing.set(false);
   }
 
-  public void petitionDelegates(ByteBuf petition) {
-    petition.retain(cpx.getConncetionMap().size());
+  public void petitionDelegates(GordoMessage petition) {
     cpx.getConncetionMap().values().stream().forEach(xs -> {
-      xs.channel().writeAndFlush(petition.duplicate());
+      xs.channel().writeAndFlush(petition);
     });
   }
 
@@ -91,19 +94,21 @@ public class CampaignManager {
       }
     }
 
+    sessionIDs.values().stream().forEach(xs -> log.info(Thread.currentThread().getName() + " " + Integer.toString(Ints.fromByteArray(xs.getVal())) + " -> " + sessionIDs.size()));
+
     petitionDelegates(PetitionBuilder.VoteForMe(sessionIDs.values().iterator().next()));
   }
 
   public void impeach() {
-    leader = -1;
+    leader = null;
   }
 
-  public Set<Channel> getDelegateList() {
+  public Set<ChannelHandlerContext> getDelegateList() {
     return ballotBox.keySet();
   }
 
   public boolean okToStartCampaign() {
-    if (leader == -1) { // There is currently no leader
+    if (leader == null) { // There is currently no leader
       return true;
     } else if ((electionTimeStamp + leaderLease) < System.currentTimeMillis()) { // Dear Leader Lease time is up
       return true;
@@ -112,13 +117,14 @@ public class CampaignManager {
     }
   }
 
-  public void startNewElectionCampaign(ChannelHandlerContext ctx) {
+  public void startNewElectionCampaign() {
     if (electionCycle.get() == Integer.MAX_VALUE) {
       electionCycle.set(0);
     }
 
     electionCycle.incrementAndGet();
     electionCycleOngoing.set(true);
+    impeach();
   }
 
   public int getCurrentElectionCycle() {
@@ -129,13 +135,32 @@ public class CampaignManager {
     return electionCycleOngoing.get();
   }
 
-  public int getConsensusVote() {
-    int vote =  ballotBox.values().stream().max(Integer::compare).orElse(null);
-    log.info(Integer.toString(vote));
-    return vote;
+  public String getConsensusVote() {
+    final int[] vote = {0};
+
+    ballotBox.entrySet().stream().forEach(xs -> {
+      int proposed = Ints.fromByteArray(xs.getValue().getVal());
+      if (proposed > vote[0]) {
+        vote[0] = proposed;
+        leader = new String(xs.getValue().getKey());
+      }
+    });
+
+    log.info("Elected -> " + leader + " at "
+        + ZonedDateTime
+        .now(ZoneId.of("UTC"))
+        .format(DateTimeFormatter.RFC_1123_DATE_TIME)
+        + " "
+        + "With a Gxid value of "
+        + Integer.toString(vote[0]));
+    return leader;
   }
 
-  public int getLeader() {
+  public String getLeader() {
     return leader;
+  }
+
+  public boolean consensusReached() {
+    return leader != null;
   }
 }

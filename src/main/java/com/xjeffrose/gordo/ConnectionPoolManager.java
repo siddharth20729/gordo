@@ -1,15 +1,19 @@
 package com.xjeffrose.gordo;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.xjeffrose.gordo.server.ChannelHandlerFactory;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
+import io.netty.channel.ChannelPipeline;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.internal.PlatformDependent;
 import java.net.InetSocketAddress;
@@ -31,11 +35,11 @@ public class ConnectionPoolManager {
 
   private final AtomicBoolean running = new AtomicBoolean(false);
   private final List<InetSocketAddress> delegateList;
-  private final ChannelHandler handler;
+  private ChannelHandlerFactory handlerFactory;
 
-  public ConnectionPoolManager(List<InetSocketAddress> delegateList, ChannelHandler handler) {
+  public ConnectionPoolManager(List<InetSocketAddress> delegateList, ChannelHandlerFactory handlerFactory) {
     this.delegateList = delegateList;
-    this.handler = handler;
+    this.handlerFactory = handlerFactory;
   }
 
   public void start() {
@@ -110,8 +114,16 @@ public class ConnectionPoolManager {
         .option(ChannelOption.TCP_NODELAY, true);
     bootstrap.group(workerLoop)
         .channel(NioSocketChannel.class)
-        .handler(handler);
-
+        .handler(new ChannelInitializer<SocketChannel>() {
+      @Override
+      protected void initChannel(SocketChannel channel) throws Exception {
+        ChannelPipeline cp = channel.pipeline();
+//        cp.addLast(new XioSecurityHandlerImpl(true).getEncryptionHandler());
+//        cp.addLast(new XioIdleDisconnectHandler(20, 20, 20));
+        cp.addLast(new GordoCodec());
+        cp.addLast(handlerFactory.get());
+      }
+    });
 
     connect2(server, bootstrap);
   }

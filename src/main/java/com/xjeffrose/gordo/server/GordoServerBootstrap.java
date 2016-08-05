@@ -1,6 +1,7 @@
 package com.xjeffrose.gordo.server;
 
 import com.google.common.base.Preconditions;
+import com.xjeffrose.gordo.GordoCodec;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.Channel;
@@ -76,6 +77,7 @@ public class GordoServerBootstrap {
 //        cp.addLast("authHandler", securityHandlers.getAuthenticationHandler());
 //        cp.addLast("dispatcher", new XioDispatcher(def, xioServerConfig));
 //        cp.addLast("exceptionLogger", new XioExceptionLogger());
+        cp.addLast("GordoCodec", new GordoCodec());
         cp.addLast("GordoHandler", handlerFactory.get());
       }
     };
